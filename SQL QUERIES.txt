@@ -1,0 +1,76 @@
+create database Watherdata;
+use watherdata;
+
+---Give the count of the minimum number of days for the time when temperature reduced
+with cte as (
+select date,temperature ,lag(temperature,1)  over (order by date) as new_temp from weather
+)
+select count(*) as reduced_temperature from cte
+where new_temp > Temperature
+
+--Find the temperature as Cold / hot by using the case and avg of values of the given data setwith Average_temp as(
+
+with Average_temp as(
+SELECT avg(Temperature) AS Average_temp
+FROM weather
+)
+SELECT Date,
+CASE WHEN Temperature < Average_temp+15 then 'Cold' ELSE 'Hot' END AS Temperature_Type
+FROM weather, Average_temp
+
+--Can you check for all 4 consecutive days when the temperature was below 30 Fahrenheit
+
+with cte as (
+SELECT  Date,Temperature,NTILE(976) OVER(ORDER BY Date ) as Bucket FROM weather),
+
+
+cte2 as(
+select case when Temperature < 30 then 1 else 0  end as temp,Bucket  from cte 
+group by Bucket,Temperature
+),
+
+cte3 as(
+select count(temp)cou,Bucket from cte2
+where temp =1
+group by Bucket)
+
+select  count(Bucket) as consecutive_Days from cte3
+where cou=4
+
+
+
+
+--Can you find the maximum number of days for which temperature dropped
+
+with cte as (select date, temperature, lag(temperature, 1) OVER (order by date) as prev_temp from weather),
+cte2 as (
+select date, temperature, prev_temp, case when prev_temp < temperature then 0 else 1
+end as drop_temp_Indicator, sum(case when prev_temp < temperature then 0 else 1 end) 
+OVER (order by date rows between unbounded preceding and current row) as drop_temp 
+from cte )
+
+select max(drop_temp) as max_no_of_days_temp_dropped from cte2;
+
+
+
+
+
+--Can you find the average of average humidity from the dataset 
+--( NOTE: should contain the following clauses: group by, order by, date )
+
+select  DATEPART(year, date) AS Year1,sum(Average_humidity)/count(date) as avg_humidity from weather
+group by DATEPART(year, date)
+order by YEAR1
+
+
+--Use the GROUP BY clause on the Date column and make a query to fetch details for average windspeed 
+select  DATEPART(year, date) AS Year2,DATEPART(month, date) AS month1,sum(Average_windspeed_mph)/count(date) as avg_windpeed from weather
+group by DATEPART(year, date),DATEPART(month, date)
+order by YEAR2,month1
+
+
+
+--Find the number of days when the temperature went below 0 degrees Celsius 
+
+select count(temperature) as less_than_zero_degree_celsius from weather
+where Temperature < 32
